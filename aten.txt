@@ -1,0 +1,40 @@
+Vini's N-dimensional array library
+
+library -> #include <sys/sysctl.h>
+sysctlbyname, is used to get the CPU cores ("logical" and "physical")
+
+TENSOR STRUCTURE
+	for the moment, the tensor will have the following components:
+		- data = an contiguous array that has all the data.
+		- shape = the array has n-dimensions, the shape shows this.
+		- strides = used to find de dimensions in the contiguous array.
+		- ndim = used to know the number of dimensions.
+		- size = total quantity of data in the data array.
+
+
+TODO - 
+	is the new method of code "reusing for operations worth it?
+	
+	FOR BROADCASTING:
+		Each tensor has at least one dimension
+
+		When iterating over dimension sizes, starting at the trailing dimension, the dimension sizes must either be equal, one of them is 1, or one of them does not exist
+
+		-how to implement this?
+			i'll have two tensors t1 and t2
+			the dimensions of t1 is an m-sized array
+			the dimensions of t2 is an n-sized array
+			i'll need to get the size of the smallest array
+			iterate backwards checking if each dims is equal or one of them 1
+			need to expand the smaller array, or do i?
+
+			
+
+OLD -
+	.the tensors are not multithreading correctly, so the sum isnt working.
+	.how to return the summed vector? create a new or use one of the both used?
+		- i corrected it by passing a single result tensor.
+		- also added memory direct summing (instead of passing the whole tensors
+
+
+
