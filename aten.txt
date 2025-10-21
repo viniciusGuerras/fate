@@ -1,4 +1,4 @@
-Vini's N-dimensional array library
+Vini's N-dimensional array library (FATE -> Fast Tensors)
 
 library -> #include <sys/sysctl.h>
 sysctlbyname, is used to get the CPU cores ("logical" and "physical")
@@ -27,6 +27,10 @@ TODO -
 			i'll need to get the size of the smallest array
 			iterate backwards checking if each dims is equal or one of them 1
 			need to expand the smaller array, or do i?
+
+		done
+
+		
 
 			
 

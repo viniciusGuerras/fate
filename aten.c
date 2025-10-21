@@ -43,8 +43,9 @@ Tensor* tensor_create(int* shape, int ndim){
 		t->size *= shape[i];
 	}
 
-	for(int i = 1; i < ndim; i++){
-		t->strides[i] = t->strides[i - 1] * t->shape[i - 1];
+	t->strides[ndim - 1] = 1;
+	for(int i = ndim - 2; i >= 0; i--){
+	    t->strides[i] = t->strides[i + 1] * t->shape[i + 1];
 	}
 
 	t->data = calloc(t->size, sizeof(float));
@@ -131,20 +132,15 @@ void* multithreaded_tensor_operation(void* arg) {
     free(a);
     return NULL;
 }
-
 /*
-// [5, 3, 2], [1]
-// last dimension is equal? yes
-// [5, 3, 2], [1, 1, 1]
-Tensor* broadcaster(Tensor* t1, Tensor* t2){
-	int* tensor_dims = t1->shape;
-	int  dim_n       = t1->ndim;
-	for(int i = dim_n; i >= 0; i++){
-		if(t1->shape[i] != t2->shape[i] && (t1->shape[i]!= 1 || t2->shape[i]!=1){
-			//error
-			printf("Error broadcasting");
-		}
+int get_offset(int* shape, int* strides, int ndim, int* indices) {
+	int offset = 0;
+	for (int i = 0; i < ndim; i++){
+		int idx = indices[i];
+		if (shape[i] == 1) idx = 0; 
+		offset += idx * strides;
 	}
+	return offset;
 }
 */
 
@@ -155,47 +151,79 @@ int* broadcast_shape(int* s1, int n1, int* s2, int n2, int* out_ndim) {
 	for(int i = 0; i < max_dim; i++){
 		int dim1 = (i < max_dim - n1) ? 1 : s1[i - (max_dim - n1)]; 
 		int dim2 = (i < max_dim - n2) ? 1 : s2[i - (max_dim - n2)]; 
+		if(dim1 != dim2 && (dim1 != 1 && dim2 != 1)){
+			return NULL;
+		}
 
 		out_shape[i] = (dim1 > dim2) ? dim1 : dim2;
-		*out_ndim++;
 	}
+
+	*out_ndim = max_dim;
 	return out_shape;
 }
 
-
 Tensor* tensor_apply_binary_op(Tensor* t1, Tensor* t2, tensor_op op){
-	if(shape_match(t1->shape, t1->ndim, t2->shape, t2->ndim) != 1){
-		printf("Tensor shapes must match.\n");
-		return NULL;
-	}
+    int out_dim;
+    int* out_shape = broadcast_shape(t1->shape, t1->ndim, t2->shape, t2->ndim, &out_dim); 
+    if(!out_shape){
+        printf("Tensor shapes aren't broadcastable.\n");
+        return NULL;
+    }
 
-	//shape is assured by the shape-match (soon broadcasting)
-	Tensor* result = tensor_create(t1->shape, t1->ndim);
-	pthread_info* thread_i = get_thread_separation(t1->size);
-	int thread_count = thread_i->n_threads;
+    printf("Broadcasted shape: [");
+    for(int i = 0; i < out_dim; i++) printf("%d%s", out_shape[i], i==out_dim-1?"":", ");
+    printf("]\n");
 
-	int start = 0;
-	for(int i = 0; i < thread_count; i++){
-		int end = start + thread_i->n_splits + (i == thread_count - 1 ? thread_i->extra : 0);
+    int t1_broadcasted_strides[out_dim];
+    int t2_broadcasted_strides[out_dim];
 
-		pthread_tensor_operation_args* args = malloc(sizeof(pthread_tensor_operation_args));
-		args->t1 = t1->data + start;
-		args->t2 = t2->data + start;
-		args->len = end - start;
-		args->tr = result->data + start;
-		args->op = op;
+    for(int i = 0; i < out_dim; i++){
+        int t1_idx = i - (out_dim - t1->ndim);
+        int t2_idx = i - (out_dim - t2->ndim);
+        t1_broadcasted_strides[i] = (t1_idx < 0 || t1->shape[t1_idx] == 1) ? 0 : t1->strides[t1_idx];
+        t2_broadcasted_strides[i] = (t2_idx < 0 || t2->shape[t2_idx] == 1) ? 0 : t2->strides[t2_idx];
+    }
 
-		pthread_create(&thread_i->threads[i], NULL, multithreaded_tensor_operation, (void *) args);
-		start = end;
-	}
+    printf("t1 broadcasted strides: [");
+    for(int i = 0; i < out_dim; i++) printf("%d%s", t1_broadcasted_strides[i], i==out_dim-1?"":", ");
+    printf("]\n");
 
-	for(int i = 0; i < thread_count; i++){
-		pthread_join(thread_i->threads[i], NULL);
-	}
+    printf("t2 broadcasted strides: [");
+    for(int i = 0; i < out_dim; i++) printf("%d%s", t2_broadcasted_strides[i], i==out_dim-1?"":", ");
+    printf("]\n");
 
-	return result;
+    Tensor* result = tensor_create(out_shape, out_dim);
+
+    int* idx = calloc(out_dim, sizeof(int));
+
+    for(int i = 0; i < result->size; i++){
+        int offset1 = 0, offset2 = 0;
+
+        // Compute offsets
+        for(int d = 0; d < out_dim; d++){
+            offset1 += idx[d] * t1_broadcasted_strides[d];
+            offset2 += idx[d] * t2_broadcasted_strides[d];
+        }
+
+        // Print debug info
+        printf("i=%d, idx=[", i);
+        for(int d = 0; d < out_dim; d++) printf("%d%s", idx[d], d==out_dim-1?"":", ");
+        printf("], offset1=%d, offset2=%d, t1=%f, t2=%f, ", 
+               offset1, offset2, t1->data[offset1], t2->data[offset2]);
+
+        result->data[i] = op(t1->data[offset1], t2->data[offset2]);
+        printf("result=%f\n", result->data[i]);
+
+        // Increment idx like an odometer
+        for(int d = out_dim - 1; d >= 0; d--){
+            idx[d]++;
+            if(idx[d] < out_shape[d]) break;
+            idx[d] = 0;
+        }
+    }
+    free(idx);
+    return result;
 }
-
 double op_add(double t1, double t2) { return t1 + t2; }
 double op_sub(double t1, double t2) { return t1 - t2; }
 double op_mul(double t1, double t2) { return t1 * t2; }
@@ -213,55 +241,34 @@ void tensor_free(Tensor* t){
 	free(t);
 }
 
-int main(){
-	int s1c[] = {3, 2};
-	int s2c[] = {2, 3};
-	int ndim;
-	int* res = broadcast_shape(s1c, 2, s2c, 2, &ndim);
-	if (res) {
-	printf("Broadcasted shape: [");
-	for(int i=0; i<ndim; i++) printf("%d ", res[i]);
-		printf("]\n");
-		free(res);
-	} else {
-		printf("Shapes incompatible\n");
-	}
-	printf("\n");
+int main() {
+    // Tiny shapes
+    int shape1[2] = {2, 1};   // 2 rows, 1 column
+    int shape2[2] = {1, 3};   // 1 row, 3 columns
 
-	int s1b[] = {8, 1, 6, 1};
-	int s2b[] = {7, 1, 5};
-	res = broadcast_shape(s1b, 4, s2b, 3, &ndim);
-	if (res) {
-		printf("Broadcasted shape: [");
-	for(int i=0; i<ndim; i++) printf("%d ", res[i]);
-		printf("]\n");
-		free(res);
-	} else {
-		printf("Shapes incompatible\n");
-	}
-/*
-	Tensor* t1 = tensor_create(shape, 3);	
-	Tensor* t2 = tensor_create(shape, 3);	
-	t1->data[4] = 2.0;
-	t1->data[1] = 5.0;
-	t2->data[2] = 1.4;
-	t2->data[10] = 9;
-	t2->data[4] = 9;
-	Tensor* t3 = tensor_sum(t1, t2);	
-	tensor_info(t1);
-	tensor_info(t2);
-	tensor_info(t3);
-	t3 = tensor_sum(t1, t2);
-	tensor_info(t3);
-	t3 = tensor_subtract(t1, t2);
-	tensor_info(t3);
-	t3 = tensor_multiply(t1, t2);
-	tensor_info(t3);
-	t3 = tensor_divide(t1, t2);
-	tensor_info(t3);
+    Tensor* t1 = tensor_create(shape1, 2);
+    Tensor* t2 = tensor_create(shape2, 2);
 
-	tensor_free(t1);
-	tensor_free(t2);
-	tensor_free(t3);
-*/
+    // Fill t1
+    t1->data[0] = 10;
+    t1->data[1] = 20;
+
+    // Fill t2
+    t2->data[0] = 1;
+    t2->data[1] = 2;
+    t2->data[2] = 3;
+
+    printf("=== Tensor Apply Binary Op Debug ===\n");
+    Tensor* t3 = tensor_sum(t1, t2);
+
+    // Print info
+    tensor_info(t1);
+    tensor_info(t2);
+    tensor_info(t3);
+
+    tensor_free(t1);
+    tensor_free(t2);
+    tensor_free(t3);
+
+    return 0;
 }
