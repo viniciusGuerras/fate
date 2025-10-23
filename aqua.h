@@ -6,10 +6,10 @@
 
 typedef struct {
     float*  data;
+    size_t  size;
+    size_t  ndim;
     size_t* shape;
     size_t* strides;
-    size_t  ndim;
-    size_t  size;
 } Tensor;
 
 typedef float (*tensor_op)(float, float);
@@ -22,7 +22,9 @@ Tensor* tensor_sum(Tensor* t1, Tensor* t2);
 Tensor* tensor_subtract(Tensor* t1, Tensor* t2);
 Tensor* tensor_multiply(Tensor* t1, Tensor* t2);
 Tensor* tensor_divide(Tensor* t1, Tensor* t2);
+Tensor* tensor_clone(Tensor* c);
 
+void tensor_print(Tensor* t);
 void tensor_free(Tensor* t);
 
 #endif
