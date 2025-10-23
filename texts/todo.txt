@@ -1,0 +1,6 @@
+TODO - 
+	- make this as fast as possible
+	- learn SIMD and vectorization
+	- try to keep the memory as contiguous as possible for the tensors
+
+	
