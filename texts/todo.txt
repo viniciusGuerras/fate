@@ -2,12 +2,10 @@ TODO -
 	- learn SIMD and vectorization
 	- try to keep the memory as contiguous as possible for the tensors
 TO IMPLEMET:
-	- tensor_reshape — change shape (if contiguous)
-	- tensor_squeeze — remove dimensions of size 1
-	- tensor_unsqueeze / tensor_expand_dims — add dimension
+	- //working - tensor_squeeze — remove dimensions of size 1
+	- //working - tensor_unsqueeze / tensor_expand_dims — add dimension
 	- tensor_transpose — swap dimensions
 	- tensor_permute — reorder axes arbitrarily
-	- tensor_flatten — collapse all dims into one
 	- tensor_contiguous — ensure data layout is compact
 	- tensor_neg — -x
 	- tensor_abs — fabsf(x)

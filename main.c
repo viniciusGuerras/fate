@@ -1,22 +1,38 @@
 #include "aqua.h"
+#include <stdio.h>
 
 int main() {
-    size_t shape[2] = {2, 1};
-    Tensor* t1 = tensor_create(shape, 2);
-    t1->data[0] = 1.4f;
+    // Create a simple 2D tensor with shape [2, 3]
+    size_t shape[2] = {2, 3};
+    Tensor* t = tensor_create(shape, 2, DT_FLOAT);
+    float* data = (float*)t->data;
 
-    Tensor* t2 = scalar_tensor(4.9f);
-    Tensor* t3 = tensor_sum(t1, t2);
+    // Fill tensor with sequential values
+    for (size_t i = 0; i < 6; i++) {
+        data[i] = (float)(i + 1);
+    }
 
-    tensor_print(t1);
-    tensor_print(t2);
-    tensor_print(t3);
-    Tensor* copied = tensor_clone(t2);
-    tensor_print(copied);
+    printf("Original tensor (shape [2, 3]):\n");
+    tensor_print(t);
 
-    tensor_free(t1);
-    tensor_free(t2);
-    tensor_free(t3);
+    // Unsqueeze (add new dimension at the front)
+    tensor_unsqueeze(t);
+
+    printf("\nAfter unsqueeze (expected shape [1, 2, 3]):\n");
+    tensor_print(t);
+
+    // Print shape and stride arrays for verification
+    printf("\nNew shape: ");
+    for (size_t i = 0; i < t->order; i++) {
+        printf("%zu ", t->shape[i]);
+    }
+    printf("\nNew stride: ");
+    for (size_t i = 0; i < t->order; i++) {
+        printf("%zu ", t->stride[i]);
+    }
+    printf("\n");
+
+    // Cleanup
+    tensor_free(t);
     return 0;
 }
-
