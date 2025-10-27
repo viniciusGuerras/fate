@@ -55,14 +55,15 @@ Tensor* tensor_clone(Tensor* c);
 Tensor* scalar_tensor(ScalarType v, DataType dtype);
 
 int tensor_reshape(Tensor* t, size_t* shape, size_t new_order);
+int tensor_squeeze_at(Tensor* t, size_t idx);
+int tensor_unsqueeze(Tensor* t, size_t idx);
+int tensor_squeeze(Tensor* t);
+int tensor_flatten(Tensor* t);
 
 void print_helper(Tensor* t, int idx);
-void tensor_unsqueeze(Tensor* t);
-void tensor_squeeze(Tensor* t);
-void tensor_flatten(Tensor* t);
-void tensor_print(Tensor* t);
-void tensor_print_shape(Tensor* t);
 void tensor_print_stride(Tensor* t);
+void tensor_print_shape(Tensor* t);
+void tensor_print(Tensor* t);
 void tensor_free(Tensor* t);
 
 #endif

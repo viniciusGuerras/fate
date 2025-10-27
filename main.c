@@ -13,26 +13,29 @@ int main() {
     }
 
     printf("Original tensor (shape [2, 3]):\n");
+    tensor_print_shape(t);
+    tensor_print_stride(t);
     tensor_print(t);
 
     // Unsqueeze (add new dimension at the front)
-    tensor_unsqueeze(t);
+    tensor_unsqueeze(t, 0);
 
-    printf("\nAfter unsqueeze (expected shape [1, 2, 3]):\n");
+    tensor_print_shape(t);
+    tensor_print_stride(t);
     tensor_print(t);
 
-    // Print shape and stride arrays for verification
-    printf("\nNew shape: ");
-    for (size_t i = 0; i < t->order; i++) {
-        printf("%zu ", t->shape[i]);
-    }
-    printf("\nNew stride: ");
-    for (size_t i = 0; i < t->order; i++) {
-        printf("%zu ", t->stride[i]);
-    }
-    printf("\n");
+    tensor_squeeze_at(t, 0);
 
-    // Cleanup
+    tensor_print_shape(t);
+    tensor_print_stride(t);
+    tensor_print(t);
+
+    tensor_flatten(t);
+
+    tensor_print_shape(t);
+    tensor_print_stride(t);
+    tensor_print(t);
+
     tensor_free(t);
     return 0;
 }

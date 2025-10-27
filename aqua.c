@@ -44,8 +44,7 @@ Tensor* tensor_create(const size_t* shape, size_t order, DataType dtype) {
 
 	t->stride[order - 1] = 1;
 	for (size_t i = order - 1; i > 0; i--) {
-		t->stride[i - 1] = t->stride[i] * t->shape[i];
-	}
+		t->stride[i - 1] = t->stride[i] * t->shape[i]; }
 
 	t->data = malloc(type_size * t->size);
 	if(!t->data){
@@ -257,8 +256,15 @@ int tensor_reshape(Tensor* t, size_t* shape, size_t new_order){
 	}
 
 	if(new_order != t->order){
-		t->shape = realloc(t->shape, new_order * sizeof(size_t));
-		t->stride = realloc(t->stride, new_order * sizeof(size_t));
+		size_t t_shape* = realloc(t->shape, new_order * sizeof(size_t));
+		size_t t_stride* = realloc(t->stride, new_order * sizeof(size_t));
+		if(!t_shape || t_stride){
+			free(t_stride);
+			free(t_shape);
+			return -1;
+		}
+		t->stride = t_stride;
+		t->shape = t_shape;
 	}
 
 	t->order = new_order;
@@ -270,10 +276,8 @@ int tensor_reshape(Tensor* t, size_t* shape, size_t new_order){
 	return 0;
 }
 
-//removes a dimension size 1 from the tensor
-//does not work for stride also
-void tensor_squeeze(Tensor* t){
-	if (!t || !t->shape || !t->stride) return;
+int tensor_squeeze(Tensor* t){
+	if (!t || !t->shape || !t->stride) return -1;
 	size_t new_order = 0;
 
 	for (size_t i = 0; i < t->order; i++) {
@@ -282,22 +286,58 @@ void tensor_squeeze(Tensor* t){
 		}
 	}
 
+	t->stride[new_order - 1] = 1;
+	for (size_t i = new_order - 1; i > 0; i--){
+		t->stride[i - 1] = t->stride[i] * t->shape[i];
+	}
+
 	t->order = new_order;
+	return 0;
 }
 
-//adds a new dimension size 1 from the tensor
-//stride is wrong, needs fixing
-void tensor_unsqueeze(Tensor* t){
-	if (!t || !t->shape || !t->stride) return;
+int tensor_squeeze_at(Tensor* t, size_t idx){
+	if (!t || !t->shape || !t->stride) return -1;
+	if(t->shape[idx] != 1){
+		printf("Error: Invalid axis for squeeze operation.\n");
+		return -1;
+	}
+
+	for (size_t i = idx + 1; i < t->order; i++) {
+		t->shape[i - 1] = t->shape[i];
+		t->stride[i - 1] = t->stride[i];
+	}
+
+	t->order--;
+	return 0;
+}
+
+int tensor_unsqueeze(Tensor* t, size_t idx){
+	if(!t || idx > t->order){
+		printf("Error: Invalid axis for unsqueeze operation.\n");
+		return -1;
+	}
+
 	size_t new_order = t->order + 1;
 
-	size_t* temp_shape = malloc(sizeof(size_t) * new_order);
-	size_t* temp_stride = malloc(sizeof(size_t) * new_order);
-	temp_shape[0] = 1;
-	temp_stride[0] = t->size;
-	for(int i = 1; i < new_order; i++){
-		temp_shape[i] =  t->shape[i - 1];
-		temp_stride[i] = t->stride[i - 1];
+	size_t* new_shape = malloc(sizeof(size_t) * new_order);
+	size_t* new_stride = malloc(sizeof(size_t) * new_order);
+	if(!new_shape || !new_stride){
+		free(new_shape);
+		free(new_stride);
+		return -1;
+	}
+
+	new_shape[idx] = 1;
+	new_stride[idx] = (idx < t->order) ? t->stride[idx] : 1;
+
+	size_t diff = 0;
+	for(int i = 0; i < new_order - 1; i++){
+		if(i == idx ){
+			diff++;
+		}
+		temp_shape[i + diff] =  t->shape[i];
+		temp_stride[i + diff] = t->stride[i];
+
 	 }
 
 	free(t->shape);
@@ -306,33 +346,8 @@ void tensor_unsqueeze(Tensor* t){
 	t->stride = temp_stride;
 	t->shape = temp_shape;
 	t->order = new_order;
+	return 0;
 }
-/*
-void tensor_squeeze_at(Tensor* t, int idx){
-}
-
-
-void tensor_unsqueeze(Tensor* t){
-	size_t new_order = t->order + 1;
-	free(t->shape);
-	free(t->stride);
-
-	t->shape = malloc(sizeof(size_t * new_order));
-	t->stride = malloc(sizeof(size_t * new_order));
-
-	int diff = 0;
-	for(size_t i = 0; i < new_order; i++){
-		if(i == idx){
-			t->stride[i] =  t->stride[i+1];
-			t->shape[i]  =  1;
-			diff++;
-		}
-		t->stride[i] = c->stride[i];
-		t->shape[i] = c->shape[i];
-	}
-
-}
-*/
 
 Tensor* tensor_clone(Tensor* c){
 	Tensor* t = tensor_create(c->shape, c->order, c->dtype);
@@ -358,7 +373,10 @@ Tensor* tensor_clone(Tensor* c){
 	return t;
 }
 
-void tensor_flatten(Tensor* t){
+int tensor_flatten(Tensor* t){
+	if(!t){
+		return -1;
+	}
 	free(t->shape);
 	free(t->stride);
 
@@ -368,6 +386,7 @@ void tensor_flatten(Tensor* t){
 	t->shape[0] = t->size;
 	t->stride[0] = 1;
 	t->order = 1;
+	return 0;
 }
 
 void print_helper(Tensor* t, int idx){
@@ -376,23 +395,16 @@ void print_helper(Tensor* t, int idx){
 		if(idx%t->stride[j]==0){
 			count++;
 		}
-
 	}
-	if(idx != 0){
+	if(idx > 0){
 		for(int k = 0; k < count; k++){
 			printf("]");
 		}
-		if(idx != t->size){
-			if(count <= 1){
-				printf(", ");
-			}
-			else{
-				printf("\n");
-			}
+		if(idx < t->size){
+			printf(", ");
 		}
-
 	}
-	if(idx != t->size){
+	if(idx < t->size){
 		for(int k = 0; k < count; k++){
 			printf("[");
 		}
@@ -400,61 +412,58 @@ void print_helper(Tensor* t, int idx){
 }
 
 void tensor_print(Tensor* t){
-	printf("([");
+	printf("data:([");
+	size_t i = 0;
 	switch (t->dtype) {
 		case DT_INT: {
 			int* data = (int*)t->data;
-			size_t i = 0;
 			for (; i < t->size; i++) {
 				print_helper(t, i);
 				printf("%d", data[i]);
 			}
-			print_helper(t, i);
 			break;
 		}
 		case DT_FLOAT: {
 			float* data = (float*)t->data;
-			size_t i = 0;
 			for (; i < t->size; i++) {
 				print_helper(t, i);
-				printf("%f", data[i]);
+				printf("%.2f", data[i]);
 			}
-			print_helper(t, i);
 			break;
 		}
 		case DT_DOUBLE: {
 			double* data = (double*)t->data;
-			size_t i = 0;
 			for (; i < t->size; i++) {
 				print_helper(t, i);
-				printf("%lf", data[i]);
+				printf("%.3lf", data[i]);
 			}
-			print_helper(t, i);
 			break;
 		}
 		default:
 		    printf("unknown dtype");
 		    break;
 	}
+	//needed for the last closing ] to appear
+	print_helper(t, i);
 	printf("])\n");
 }
 
 void tensor_print_shape(Tensor* t){
-	printf("shape=[");
+	printf("shape:(");
 	for (size_t i = 0; i < t->order; i++) {
 		printf("%zu", t->shape[i]);
 		if (i < t->order - 1) printf(", ");
 	}
-	printf("]\n");
+	printf(")\n");
 }
 
 void tensor_print_stride(Tensor* t){
-	printf("stride=[");
+	printf("stride:(");
 	for (size_t i = 0; i < t->order; i++) {
 		printf("%zu", t->stride[i]);
 		if (i < t->order - 1) printf(", ");
 	}
-	printf("]\n");
+	printf(")\n");
 }
 
 void tensor_free(Tensor* t) {
@@ -464,7 +473,4 @@ void tensor_free(Tensor* t) {
 	free(t->shape);
 	free(t);
 }
-
-
-
 
