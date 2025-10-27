@@ -2,8 +2,8 @@ TODO -
 	- learn SIMD and vectorization
 	- try to keep the memory as contiguous as possible for the tensors
 TO IMPLEMET:
-	- //working - tensor_squeeze — remove dimensions of size 1
-	- //working - tensor_unsqueeze / tensor_expand_dims — add dimension
+	partially done - tensor_squeeze — remove dimensions of size 1
+	partially done - tensor_unsqueeze / tensor_expand_dims — add dimension
 	- tensor_transpose — swap dimensions
 	- tensor_permute — reorder axes arbitrarily
 	- tensor_contiguous — ensure data layout is compact

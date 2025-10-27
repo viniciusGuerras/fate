@@ -9,58 +9,53 @@ size_t get_dtype_size(DataType dtype) {
     }
 }
 
-Tensor* tensor_create(const size_t* shape, size_t order, DataType dtype) {
-	Tensor* t = (Tensor*)malloc(sizeof(Tensor));
-	if (!t) {
-		printf("Failed to allocate Tensor");
-		return NULL;
-        }
-
-	t->size  = 1;
-	t->order = order;
-	t->dtype = dtype;
+Tensor* tensor_create(const size_t* shape, size_t order, size_t extra, DataType dtype) {
+	size_t total_elements = 1;
+	for(int i = 0; i < order; i++){
+		total_elements *= shape[i];
+	}
 
 	size_t type_size = get_dtype_size(dtype);
 
-	t->shape   = malloc(sizeof(size_t) * order);
-	if (!t->shape) {
-		printf("Failed to allocate shape array\n");
-		free(t);
+	size_t size =  sizeof(Tensor) 
+			+ (((2 * sizeof(size_t)) + extra) * order) 
+			+ (type_size * total_elements);
+
+	char* block = calloc(1, size);
+	if (!block) {
+		printf("ERROR: Failed to allocate Tensor.\n");
 		return NULL;
         }
 
-	t->stride = malloc(sizeof(size_t) * order);
-	if (!t->stride) {
-		printf("Failed to allocate stride array\n");
-		free(t->shape);
-		free(t);
-		return NULL;
-	}
+	Tensor* t =  (Tensor*)block;
+	t->order = order;
+	t->remaining_extra = extra;
+	t->dtype = dtype;
+	t->size  = total_elements;
+
+	char* ptr = block + sizeof(Tensor);
+	t->shape = (size_t*)ptr;
+
+	ptr += sizeof(size_t) * (order + extra);
+	t->stride = (size_t*)ptr; 
+
+	ptr += sizeof(size_t) * (order + extra);
+	t->data = (void*)ptr; 
 
 	for (size_t i = 0; i < order; i++) {
 		t->shape[i] = (size_t)shape[i];
-		t->size *= shape[i];
 	}
 
 	t->stride[order - 1] = 1;
 	for (size_t i = order - 1; i > 0; i--) {
 		t->stride[i - 1] = t->stride[i] * t->shape[i]; }
 
-	t->data = malloc(type_size * t->size);
-	if(!t->data){
-		printf("Failed to allocate stride array\n");
-		free(t->shape);
-		free(t->stride);
-		free(t);
-		return NULL;
-	}
-
 	return t;
 }
 
-Tensor* scalar_tensor(ScalarType v, DataType dtype) {
+Tensor* scalar_tensor(ScalarType v, DataType dtype, size_t extra) {
 	size_t shape[1] = {1};
-	Tensor* t = tensor_create(shape, 1, dtype);
+	Tensor* t = tensor_create(shape, 1, extra, dtype);
 	size_t type_size = get_dtype_size(dtype);
 	switch (dtype) {
 		case DT_INT:    ((int*)t->data)[0] = v.i; break;
@@ -68,24 +63,6 @@ Tensor* scalar_tensor(ScalarType v, DataType dtype) {
 		case DT_DOUBLE: ((double*)t->data)[0] = v.d; break;
 	}
 	return t;
-}
-
-size_t* broadcast_shape(const size_t* s1, size_t n1, const size_t* s2, size_t n2, size_t* out_order) {
-    *out_order = (n1 > n2) ? n1 : n2;
-    size_t* out_shape = malloc(sizeof(size_t) * (*out_order));
-    if (!out_shape) return NULL;
-
-    for (size_t i = 0; i < *out_order; i++) {
-        size_t dim1 = (i < *out_order - n1) ? 1 : s1[i - (*out_order - n1)];
-        size_t dim2 = (i < *out_order - n2) ? 1 : s2[i - (*out_order - n2)];
-        if (dim1 != dim2 && dim1 != 1 && dim2 != 1) {
-            free(out_shape);
-            return NULL;
-        }
-        out_shape[i] = (dim1 > dim2) ? dim1 : dim2;
-    }
-
-    return out_shape;
 }
 
 double op_add_double(double a, double b) { return a + b; }
@@ -103,128 +80,183 @@ int op_sub_int(int a, int b) { return a - b; }
 int op_mul_int(int a, int b) { return a * b; }
 int op_div_int(int a, int b) { return a / b; }
 
-Tensor* tensor_apply_binary_op_double(Tensor* t1, Tensor* t2, tensor_op_double op) {
-	size_t out_dim;
-	size_t* out_shape = broadcast_shape(t1->shape, t1->order, t2->shape, t2->order, &out_dim);
-	if (!out_shape) {
-		printf("Tensor shapes aren't broadcastable.\n");
-		return NULL;
+inline size_t* broadcast_shape(const size_t* s1, size_t n1, const size_t* s2, size_t n2, size_t* out_order) {
+	*out_order = (n1 > n2) ? n1 : n2;
+	size_t* out_shape = malloc(sizeof(size_t) * (*out_order));
+	if (!out_shape) return NULL;
+
+	for (size_t i = 0; i < *out_order; i++) {
+		size_t dim1 = (i < *out_order - n1) ? 1 : s1[i - (*out_order - n1)];
+		size_t dim2 = (i < *out_order - n2) ? 1 : s2[i - (*out_order - n2)];
+		if (dim1 != dim2 && dim1 != 1 && dim2 != 1) {
+		    free(out_shape);
+		    return NULL;
+		}
+		out_shape[i] = (dim1 > dim2) ? dim1 : dim2;
 	}
-	Tensor* result = tensor_create(out_shape, out_dim, DT_DOUBLE);
-	if (!result){
-		free(out_shape);
-		return NULL;
-	}
-	size_t* s1 = calloc(out_dim, sizeof(size_t));
-	size_t* s2 = calloc(out_dim, sizeof(size_t));
+	return out_shape;
+}
+
+inline void broadcasted_stride(size_t** s1, size_t** s2, 
+			size_t out_dim, Tensor* t1, Tensor* t2) {
 	for (size_t i = 0; i < out_dim; i++) {
 		int t1_idx = (int)i - (int)(out_dim - t1->order);
 		int t2_idx = (int)i - (int)(out_dim - t2->order);
-		s1[i] = (t1_idx < 0 || t1->shape[t1_idx] == 1) ? 0 : t1->stride[t1_idx];
-		s2[i] = (t2_idx < 0 || t2->shape[t2_idx] == 1) ? 0 : t2->stride[t2_idx];
+		(*s1)[i] = (t1_idx < 0 || t1->shape[t1_idx] == 1) ? 0 : t1->stride[t1_idx];
+		(*s2)[i] = (t2_idx < 0 || t2->shape[t2_idx] == 1) ? 0 : t2->stride[t2_idx];
 	}
-	size_t* idx = calloc(out_dim, sizeof(size_t));
-	size_t size = result->size;
-	for(size_t i = 0; i < size; i++){
-		int offset1 = 0, offset2 = 0;
+}
 
-		for (size_t j = 0; j < out_dim; j++) {
-			offset1 += (s1[j] == 0 ? 0 : idx[j] * s1[j]);
-			offset2 += (s2[j] == 0 ? 0 : idx[j] * s2[j]);
-		}
-		((double*)result->data)[i] = op(((double*)t1->data)[offset1], ((double*)t2->data)[offset2]);
-		for(int j = (out_dim - 1); j >= 0; j--){
-			idx[j]++;
-			if (idx[j] < out_shape[j]) break;
-		        idx[j] = 0;
-		}
+void calculate_double(double* result, size_t* out_shape, 
+               size_t pos, size_t* s1, size_t* s2, 
+               size_t offset1, size_t offset2, size_t* rpos,
+               size_t out_dim, Tensor* t1, Tensor* t2, tensor_op_double op) {
+
+    if (pos == out_dim) {
+	result[*rpos] = op(((double*)t1->data)[offset1], ((double*)t2->data)[offset2]);
+        (*rpos)++;
+        return;
+    }
+
+    for (size_t i = 0; i < out_shape[pos]; i++) {
+        size_t new_offset1 = offset1 + i * s1[pos];
+        size_t new_offset2 = offset2 + i * s2[pos];
+        calculate_double(result, out_shape, pos + 1, s1, s2, new_offset1, new_offset2, rpos, out_dim, t1, t2, op);
+    }
+}
+
+void calculate_float(float* result, size_t* out_shape, 
+               size_t pos, size_t* s1, size_t* s2, 
+               size_t offset1, size_t offset2, size_t* rpos,
+               size_t out_dim, Tensor* t1, Tensor* t2, tensor_op_float op) {
+
+    if (pos == out_dim) {
+        result[*rpos] = op(((float*)t1->data)[offset1], ((float*)t2->data)[offset2]);
+        (*rpos)++;
+        return;
+    }
+
+    for (size_t i = 0; i < out_shape[pos]; i++) {
+        size_t new_offset1 = offset1 + i * s1[pos];
+        size_t new_offset2 = offset2 + i * s2[pos];
+        calculate_float(result, out_shape, pos + 1, s1, s2, new_offset1, new_offset2, rpos, out_dim, t1, t2, op);
+    }
+}
+
+void calculate_int(int* result, size_t* out_shape, 
+               size_t pos, size_t* s1, size_t* s2, 
+               size_t offset1, size_t offset2, size_t* rpos,
+               size_t out_dim, Tensor* t1, Tensor* t2, tensor_op_int op) {
+
+    if (pos == out_dim) {
+        result[*rpos] = op(((int*)t1->data)[offset1], ((int*)t2->data)[offset2]);
+        (*rpos)++;
+        return;
+    }
+
+    for (size_t i = 0; i < out_shape[pos]; i++) {
+        size_t new_offset1 = offset1 + i * s1[pos];
+        size_t new_offset2 = offset2 + i * s2[pos];
+        calculate_int(result, out_shape, pos + 1, s1, s2, new_offset1, new_offset2, rpos, out_dim, t1, t2, op);
+    }
+}
+
+/*
+*
+* Calculates "out_shape" the broadcasted shape between both of the tensors
+* Creates the result tensor with shape equal to out_shape 
+*
+*/
+Tensor* tensor_apply_binary_op_double(Tensor* t1, Tensor* t2, tensor_op_double op) {
+	size_t out_dim;
+	size_t extra = t1->remaining_extra > t2->remaining_extra ? 
+		   t1->remaining_extra : t2->remaining_extra;
+	size_t* out_shape = broadcast_shape(t1->shape, t1->order, t2->shape, t2->order, &out_dim);
+	if (!out_shape) {
+		printf("ERROR: Tensor shapes aren't broadcastable.\n");
+		return NULL;
 	}
+
+	Tensor* result = tensor_create(out_shape, out_dim, extra, DT_DOUBLE);
+	if (!result){
+		printf("ERROR: Fail creating result tensor.\n");
+		free(out_shape);
+		return NULL;
+	}
+
+	size_t* s1 = malloc(out_dim * sizeof(size_t));
+	size_t* s2 = malloc(out_dim * sizeof(size_t));
+	if(!s1 || !s2){
+		printf("ERROR: Fail creating s1 or s2 arrays.\n");
+	}
+	broadcasted_stride(&s1, &s2, out_dim, t1, t2);
+
+	size_t rpos = 0;
+	calculate_double((double*)result->data, out_shape, 0, s1, s2, 0, 0, &rpos, out_dim, t1, t2, op);
+
 	free(out_shape);
-	free(idx);
 	free(s1);
 	free(s2);
 	return result;
 }
 
+
 Tensor* tensor_apply_binary_op_float(Tensor* t1, Tensor* t2, tensor_op_float op) {
+	size_t extra = t1->remaining_extra > t2->remaining_extra ? t1->remaining_extra : t2->remaining_extra;
 	size_t out_dim;
 	size_t* out_shape = broadcast_shape(t1->shape, t1->order, t2->shape, t2->order, &out_dim);
 	if (!out_shape) {
-		printf("Tensor shapes aren't broadcastable.\n");
+		printf("ERROR: Tensor shapes aren't broadcastable.\n");
 		return NULL;
 	}
-	Tensor* result = tensor_create(out_shape, out_dim, DT_FLOAT);
+	Tensor* result = tensor_create(out_shape, out_dim, extra, DT_FLOAT);
 	if (!result){
 		free(out_shape);
 		return NULL;
 	}
-	size_t* s1 = calloc(out_dim, sizeof(size_t)); size_t* s2 = calloc(out_dim, sizeof(size_t));
-	for (size_t i = 0; i < out_dim; i++) {
-		int t1_idx = (int)i - (int)(out_dim - t1->order);
-		int t2_idx = (int)i - (int)(out_dim - t2->order);
-		s1[i] = (t1_idx < 0 || t1->shape[t1_idx] == 1) ? 0 : t1->stride[t1_idx];
-		s2[i] = (t2_idx < 0 || t2->shape[t2_idx] == 1) ? 0 : t2->stride[t2_idx];
-	}
-	size_t* idx = calloc(out_dim, sizeof(size_t));
-	size_t size = result->size;
-	for(size_t i = 0; i < size; i++){
-		int offset1 = 0, offset2 = 0;
 
-		for (size_t j = 0; j < out_dim; j++) {
-			offset1 += (s1[j] == 0 ? 0 : idx[j] * s1[j]);
-			offset2 += (s2[j] == 0 ? 0 : idx[j] * s2[j]);
-		}
-		((float*)result->data)[i] = op(((float*)t1->data)[offset1], ((float*)t2->data)[offset2]);
-		for(int j = (out_dim - 1); j >= 0; j--){
-			idx[j]++;
-			if (idx[j] < out_shape[j]) break;
-		        idx[j] = 0;
-		}
+	size_t* s1 = calloc(out_dim, sizeof(size_t)); 
+	size_t* s2 = calloc(out_dim, sizeof(size_t));
+	if(!s1 || !s2){
+		printf("ERROR: Fail creating s1 or s2 arrays.\n");
 	}
+	broadcasted_stride(&s1, &s2, out_dim, t1, t2);
+
+	size_t rpos = 0;
+	calculate_float((float*)result->data, out_shape, 0, s1, s2, 0, 0, &rpos, out_dim, t1, t2, op);
+
 	free(out_shape);
-	free(idx);
 	free(s1);
 	free(s2);
 	return result;
 }
 
 Tensor* tensor_apply_binary_op_int(Tensor* t1, Tensor* t2, tensor_op_int op) {
+	size_t extra = t1->remaining_extra > t2->remaining_extra ? t1->remaining_extra : t2->remaining_extra;
 	size_t out_dim;
 	size_t* out_shape = broadcast_shape(t1->shape, t1->order, t2->shape, t2->order, &out_dim);
 	if (!out_shape) {
-		printf("Tensor shapes aren't broadcastable.\n");
+		printf("ERROR: Tensor shapes aren't broadcastable.\n");
 		return NULL;
 	}
-	Tensor* result = tensor_create(out_shape, out_dim, DT_INT);
+	Tensor* result = tensor_create(out_shape, out_dim, extra, DT_INT);
 	if (!result){
 		free(out_shape);
 		return NULL;
 	}
-	size_t* s1 = calloc(out_dim, sizeof(size_t)); size_t* s2 = calloc(out_dim, sizeof(size_t));
-	for (size_t i = 0; i < out_dim; i++) {
-		int t1_idx = (int)i - (int)(out_dim - t1->order);
-		int t2_idx = (int)i - (int)(out_dim - t2->order);
-		s1[i] = (t1_idx < 0 || t1->shape[t1_idx] == 1) ? 0 : t1->stride[t1_idx];
-		s2[i] = (t2_idx < 0 || t2->shape[t2_idx] == 1) ? 0 : t2->stride[t2_idx];
-	}
-	size_t* idx = calloc(out_dim, sizeof(size_t));
-	size_t size = result->size;
-	for(size_t i = 0; i < size; i++){
-		int offset1 = 0, offset2 = 0;
 
-		for (size_t j = 0; j < out_dim; j++) {
-			offset1 += (s1[j] == 0 ? 0 : idx[j] * s1[j]);
-			offset2 += (s2[j] == 0 ? 0 : idx[j] * s2[j]);
-		}
-		((int*)result->data)[i] = op(((int*)t1->data)[offset1], ((int*)t2->data)[offset2]);
-		for(int j = (out_dim - 1); j >= 0; j--){
-			idx[j]++;
-			if (idx[j] < out_shape[j]) break;
-		        idx[j] = 0;
-		}
+	size_t* s1 = calloc(out_dim, sizeof(size_t)); 
+	size_t* s2 = calloc(out_dim, sizeof(size_t));
+	if(!s1 || !s2){
+		printf("ERROR: Fail creating s1 or s2 arrays.\n");
 	}
+	
+	broadcasted_stride(&s1, &s2, out_dim, t1, t2);
+
+	size_t rpos = 0;
+	calculate_int((int*)result->data, out_shape, 0, s1, s2, 0, 0, &rpos, out_dim, t1, t2, op);
+
 	free(out_shape);
-	free(idx);
 	free(s1);
 	free(s2);
 	return result;
@@ -251,23 +283,20 @@ int tensor_reshape(Tensor* t, size_t* shape, size_t new_order){
 		new_size *= shape[i];
 	}
 	if(new_size != t->size){
-		printf("Reshaping not allowed.");
+		printf("ERROR: Reshaping not allowed.");
 		return -1;
 	}
 
-	if(new_order != t->order){
-		size_t t_shape* = realloc(t->shape, new_order * sizeof(size_t));
-		size_t t_stride* = realloc(t->stride, new_order * sizeof(size_t));
-		if(!t_shape || t_stride){
-			free(t_stride);
-			free(t_shape);
-			return -1;
-		}
-		t->stride = t_stride;
-		t->shape = t_shape;
+	if(new_order != t->order && t->remaining_extra + t->order < new_order){
+		printf("ERROR: Not enough memory for stride and shape.");
+		return -1;
+	}
+	else{
+		t->remaining_extra -= (new_order - t->order);
+		t->order = new_order;
+
 	}
 
-	t->order = new_order;
 	for (size_t i = 0; i < new_order; i++) t->shape[i] = (size_t)shape[i];
 
 	t->stride[new_order - 1] = 1;
@@ -298,7 +327,7 @@ int tensor_squeeze(Tensor* t){
 int tensor_squeeze_at(Tensor* t, size_t idx){
 	if (!t || !t->shape || !t->stride) return -1;
 	if(t->shape[idx] != 1){
-		printf("Error: Invalid axis for squeeze operation.\n");
+		printf("ERROR: Invalid axis for squeeze operation.\n");
 		return -1;
 	}
 
@@ -313,44 +342,31 @@ int tensor_squeeze_at(Tensor* t, size_t idx){
 
 int tensor_unsqueeze(Tensor* t, size_t idx){
 	if(!t || idx > t->order){
-		printf("Error: Invalid axis for unsqueeze operation.\n");
+		printf("ERROR: Invalid axis for unsqueeze operation.\n");
 		return -1;
 	}
 
+	if(t->remaining_extra < 1){
+		printf("ERROR: Not enough memory for stride and shape.");
+		return -1;
+	}
+
+	t->remaining_extra--;
 	size_t new_order = t->order + 1;
 
-	size_t* new_shape = malloc(sizeof(size_t) * new_order);
-	size_t* new_stride = malloc(sizeof(size_t) * new_order);
-	if(!new_shape || !new_stride){
-		free(new_shape);
-		free(new_stride);
-		return -1;
-	}
-
-	new_shape[idx] = 1;
-	new_stride[idx] = (idx < t->order) ? t->stride[idx] : 1;
-
-	size_t diff = 0;
-	for(int i = 0; i < new_order - 1; i++){
-		if(i == idx ){
-			diff++;
-		}
-		temp_shape[i + diff] =  t->shape[i];
-		temp_stride[i + diff] = t->stride[i];
-
+	for(size_t i = t->order; i > idx; i--){
+		t->shape[i] =  t->shape[i - 1];
+		t->stride[i] = t->stride[i - 1];
 	 }
 
-	free(t->shape);
-	free(t->stride);
-
-	t->stride = temp_stride;
-	t->shape = temp_shape;
+	t->shape[idx] = 1;
+	t->stride[idx] = (idx < t->order) ? t->stride[idx + 1] : 1;
 	t->order = new_order;
 	return 0;
 }
 
 Tensor* tensor_clone(Tensor* c){
-	Tensor* t = tensor_create(c->shape, c->order, c->dtype);
+	Tensor* t = tensor_create(c->shape, c->order, c->remaining_extra, c->dtype);
 	t->size = c->size;
 	t->order = c->order;
 	for(size_t i = 0; i < c->order; i++){
@@ -377,15 +393,9 @@ int tensor_flatten(Tensor* t){
 	if(!t){
 		return -1;
 	}
-	free(t->shape);
-	free(t->stride);
-
-	t->shape = malloc(sizeof(size_t));
-	t->stride = malloc(sizeof(size_t));
-
+	t->order = 1;
 	t->shape[0] = t->size;
 	t->stride[0] = 1;
-	t->order = 1;
 	return 0;
 }
 
@@ -468,9 +478,6 @@ void tensor_print_stride(Tensor* t){
 
 void tensor_free(Tensor* t) {
 	if (!t) return;
-	free(t->data);
-	free(t->stride);
-	free(t->shape);
 	free(t);
 }
 
