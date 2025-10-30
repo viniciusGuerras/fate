@@ -4,12 +4,12 @@ TODO -
 TO IMPLEMET:
 	partially done - tensor_squeeze — remove dimensions of size 1
 	partially done - tensor_unsqueeze / tensor_expand_dims — add dimension
-	- tensor_transpose — swap dimensions
-	- tensor_permute — reorder axes arbitrarily
-	- tensor_contiguous — ensure data layout is compact
-	- tensor_neg — -x
-	- tensor_abs — fabsf(x)
-	- tensor_exp, tensor_log, tensor_sqrt
+	partially done - tensor_transpose — swap dimensions
+	partially done - tensor_permute — reorder axes arbitrarily
+	p- tensor_neg — -x
+	p- tensor_abs — fabsf(x)
+	p- tensor_exp, tensor_log, tensor_sqrt
+
 	- tensor_sin, tensor_cos, tensor_tan
 	- tensor_relu, tensor_sigmoid, tensor_tanh
 	- tensor_floor, tensor_ceil, tensor_round
