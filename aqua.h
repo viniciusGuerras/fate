@@ -8,8 +8,6 @@
 #include <time.h>
 #include "rng.h"
 
-#define EULER_CONSTANT 2.718281828459045
-
 // DataType - Supported data types for Tensor elements
 typedef enum {
     DT_INT,
@@ -37,8 +35,8 @@ typedef union {
     double d;
 } ScalarType;
 
-
 int tensor_fill_random(Tensor* t);
+
 // Function pointer types for unary operations
 int tensor_negation(Tensor* t);
 int tensor_abs(Tensor* t);
@@ -49,6 +47,7 @@ typedef double (*tensor_op_double)(double, double);
 typedef float  (*tensor_op_float)(float, float);
 typedef int    (*tensor_op_int)(int, int);
 
+Tensor* tensor_matmul(Tensor* t1, Tensor* t2);
 // Tensor creation and basic operations
 Tensor* tensor_create(const size_t* shape, size_t order, size_t extra, DataType dtype);
 Tensor* tensor_clone(Tensor* c);
@@ -84,12 +83,8 @@ int tensor_unsqueeze(Tensor* t, size_t idx);
 int tensor_squeeze(Tensor* t);
 int tensor_flatten(Tensor* t);
 
-// Broadcasting helpers
-size_t* broadcast_shape(const size_t* s1, size_t n1, const size_t* s2, size_t n2, size_t* out_order);
-void broadcasted_stride(size_t* s1, size_t* s2, size_t out_dim, Tensor* t1, Tensor* t2);
-
 // Debugging / printing utilities
-void print_helper(Tensor* t, int idx);
+void tensor_print_recursive(void* data, size_t* shape, DataType dtype, size_t order, size_t pos, size_t offset);
 void tensor_print_stride(Tensor* t);
 void tensor_print_shape(Tensor* t);
 void tensor_print(Tensor* t);

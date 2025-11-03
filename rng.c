@@ -133,7 +133,6 @@ float xoshiro_next_float(void){
 	return (xoshiro_next() >> 40) / (float)(1ULL << 24);
 }
 
-
 /*
  * xoshiro_next_double
  *
@@ -150,7 +149,6 @@ float xoshiro_next_float(void){
 double xoshiro_next_double(void){
 	return (xoshiro_next() >> 11) * (1.0 / 9007199254740992.0);
 }
-
 
 /*
  * xoshiro_seed
