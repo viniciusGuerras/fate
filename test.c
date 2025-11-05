@@ -1,5 +1,5 @@
-#include "aqua.h"
 #include "test_utils.h"
+#include "tensor.h"
 #include <math.h>
 
 void test_tensor_create_and_free() {
