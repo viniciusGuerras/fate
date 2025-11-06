@@ -1,6 +1,14 @@
 #ifndef TENSOR_H
 #define TENSOR_H
 
+/*
+ * tensor
+ * Implements a simple tensor library for numerical operations.
+ * Supports creation, manipulation, and arithmetic on tensors.
+ * Author: Vinicius Guerra
+ * Start-Date: 2025-10-16
+ */
+
 #include <stdlib.h>
 #include <string.h>
 #include "utils.h"
@@ -9,7 +17,6 @@
 #include <math.h>
 #include <time.h>
 #include "rng.h"
-
 
 typedef struct {
     /*--- Tensor internal management ---*/
@@ -23,23 +30,14 @@ typedef struct {
     void*    data;            // pointer to the tensor data
 } Tensor;
 
+// Tensor-arena related
 void tensor_request(RequestState* rs, char* identifier, const size_t* shape, size_t order, size_t extra, DataType dtype);
 void* tensor_find(RequestState* rs, char* identifier);
 Tensor* tensor_instantiate(RequestState* rs, char* identifier);
-void tensor_op_elementwise_request(RequestState* rs,
-				   char* identifier_r,
-				   char* identifier_1,
-				   char* identifier_2);
-void tensor_matmul_request(RequestState* rs,
-			   char* identifier,
-			   const size_t* shape_1,
-			   size_t order_1,
-			   size_t extra_1,
-			   DataType dtype_1,
-			   const size_t* shape_2, 
-			   size_t order_2,
-			   size_t extra_2,
-			   DataType dtype_2);
+void tensor_op_elementwise_request(RequestState* rs, char* identifier_r, char* identifier_1, char* identifier_2);
+void tensor_matmul_request(RequestState* rs, char* identifier, const size_t* shape_1, size_t order_1, size_t extra_1, DataType dtype_1, const size_t* shape_2, size_t order_2, size_t extra_2, DataType dtype_2);
+
+// Tensor populating
 int tensor_fill_random(Tensor* t);
 
 // Function pointer types for unary operations

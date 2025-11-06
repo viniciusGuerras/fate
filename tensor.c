@@ -1,16 +1,25 @@
-/*
- * aqua.c
- * Implements a simple tensor library for numerical operations.
- * Supports creation, manipulation, and arithmetic on tensors.
- * Author: Vinicius Guerra
- * Start-Date: 2025-10-16
- */
-
 #include "tensor.h"
+
 static HashSet* hs = NULL;
 
+// functions for each type and operation 
+double op_add_double(double a, double b) { return a + b; }
+double op_sub_double(double a, double b) { return a - b; }
+double op_mul_double(double a, double b) { return a * b; }
+double op_div_double(double a, double b) { return a / b; }
+
+float op_add_float(float a, float b) { return a + b; }
+float op_sub_float(float a, float b) { return a - b; }
+float op_mul_float(float a, float b) { return a * b; }
+float op_div_float(float a, float b) { return a / b; }
+
+int op_add_int(int a, int b) { return a + b; }
+int op_sub_int(int a, int b) { return a - b; }
+int op_mul_int(int a, int b) { return a * b; }
+int op_div_int(int a, int b) { return a / b; }
+
 /*
- * tensor_create - Creates a contiguous tensor in memory
+ * tensor_instantiate - Creates a contiguous tensor in memory
  * @shape: array of dimensions
  * @order: number of dimensions
  * @extra: extra space for future operations
@@ -19,7 +28,6 @@ static HashSet* hs = NULL;
  * Returns: Pointer to a Tensor structure, or NULL on allocation failure.
  * The returned tensor stores shape, stride, and data contiguously.
  */
-
 Tensor* tensor_instantiate(RequestState* rs, char* identifier){
 	char* block = (char*)arena_request(rs, identifier);
 
@@ -68,26 +76,8 @@ Tensor* tensor_instantiate(RequestState* rs, char* identifier){
 			break;
 		}
 	}
-
 	return t;
 }
-
-// functions for each type and operation 
-double op_add_double(double a, double b) { return a + b; }
-double op_sub_double(double a, double b) { return a - b; }
-double op_mul_double(double a, double b) { return a * b; }
-double op_div_double(double a, double b) { return a / b; }
-
-float op_add_float(float a, float b) { return a + b; }
-float op_sub_float(float a, float b) { return a - b; }
-float op_mul_float(float a, float b) { return a * b; }
-float op_div_float(float a, float b) { return a / b; }
-
-int op_add_int(int a, int b) { return a + b; }
-int op_sub_int(int a, int b) { return a - b; }
-int op_mul_int(int a, int b) { return a * b; }
-int op_div_int(int a, int b) { return a / b; }
-
 /*
  * broadcast_shape - Calculates the broadcasted shape of two tensors
  * @s1: Pointer to the array representing the shape of the first tensor.
@@ -127,8 +117,7 @@ static inline size_t* broadcast_shape(const size_t* s1, size_t n1, const size_t*
  * @t1: Pointer to the first tensor structure.
  * @t2: Pointer to the second tensor structure.
  */
-static inline void broadcasted_stride(size_t* s1, size_t* s2, 
-			size_t out_dim, Tensor* t1, Tensor* t2) {
+static inline void broadcasted_stride(size_t* s1, size_t* s2, size_t out_dim, Tensor* t1, Tensor* t2) {
 	for (size_t i = 0; i < out_dim; i++) {
 		int t1_idx = (int)i - (int)(out_dim - t1->order);
 		int t2_idx = (int)i - (int)(out_dim - t2->order);
@@ -137,8 +126,9 @@ static inline void broadcasted_stride(size_t* s1, size_t* s2,
 	}
 }
 
-
+//TODO: add code explanation
 void tensor_request(RequestState* rs, char* identifier, const size_t* shape, size_t order, size_t extra, DataType dtype) {
+	/* Request tensor memory for arena */
 	size_t total_elements = 1;
 	for(int i = 0; i < order; i++){ 
 		total_elements *= shape[i];
@@ -146,19 +136,18 @@ void tensor_request(RequestState* rs, char* identifier, const size_t* shape, siz
 
 	size_t type_size = get_dtype_size(dtype);
 
-	//find the total memory of this tensor
+	// Calculate the total memory for this tensor
 	size_t size =  sizeof(Tensor) 
 			+ (2 * (sizeof(size_t) * (order + extra))) 
 			+ (type_size * total_elements);
 
-	arena_add(rs, identifier, size); //creates an entry to it in the arena
+	arena_add(rs, identifier, size); // Creates an entry to it in the arena
 
-	// initiate the hashset
-	if(!hs){
+	if(!hs){ 
 		hs = hashset_create();
 	}
 
-	// save's it locally to later instantiate
+	/* Need to save the tensor locally to later instantiate */
 	Tensor* t = (Tensor*)malloc(sizeof(Tensor));
 	if(!t){
 		return;
@@ -187,6 +176,7 @@ void tensor_request(RequestState* rs, char* identifier, const size_t* shape, siz
 	hashset_add(hs, identifier, (void*)t);
 }
 
+//TODO: add code explanation
 void tensor_op_elementwise_request(RequestState* rs, char* identifier_r, char* identifier_1, char* identifier_2){
 	Tensor* a = hashset_get(hs, identifier_1);
 	Tensor* b = hashset_get(hs, identifier_2);
@@ -202,6 +192,7 @@ void tensor_op_elementwise_request(RequestState* rs, char* identifier_r, char* i
 	tensor_request(rs, identifier_r, out_shape, out_dim, extra, DT_FLOAT);
 }
 
+//TODO: add code explanation
 void tensor_matmul_request(RequestState* rs, char* identifier,
 			const size_t* shape_1, size_t order_1, size_t extra_1, DataType dtype_1,
 			const size_t* shape_2, size_t order_2, size_t extra_2, DataType dtype_2) {
@@ -220,6 +211,8 @@ void tensor_matmul_request(RequestState* rs, char* identifier,
 	}
 	tensor_request(rs, identifier, out_shape, out_dim + 2, extra, DT_FLOAT);
 }
+
+//TODO: remove the s1 and s2 arrays and pre-calculate the values for operations 
 
 /*
  * tensor_apply_binary_op - Applies a binary operation element-wise to two tensors
@@ -466,21 +459,21 @@ Tensor* tensor_matmul(Tensor* t1, Tensor* t2, Tensor* r) {
 	size_t t2_outer_idx = t2->order - 1;
 	size_t inner_idx    = t1->order - 2;
 
-	size_t m = t1->shape[t1_outer_idx]; // outer dimension of t1 tensor 
-	size_t n = t2->shape[t2_outer_idx]; // outer dimension of t2 tensor
-	size_t p = t1->shape[inner_idx];    // inner dimension of one of the two tensors (they must be equal in the inner dimension)
+	size_t m = t1->shape[t1_outer_idx]; // Outer dimension of t1 tensor 
+	size_t n = t2->shape[t2_outer_idx]; // Outer dimension of t2 tensor
+	size_t p = t1->shape[inner_idx];    // Inner dimension of one of the two tensors (they must be equal in the inner dimension)
 	
-	// set result's extra shape
+	// Set result's extra shape
 	r->shape[r->order - 2] = m;
 	r->shape[r->order - 1] = n;
 
-	// re-calculates the new stride for result
+	// Re-calculates the new stride for result
 	r->stride[r->order - 1] = 1;
 	for (size_t i = r->order - 1; i > 0; i--){
 		r->stride[i - 1] = r->stride[i] * r->shape[i]; 
 	}
 
-	size_t* idx = calloc(r->order, sizeof(size_t)); // multi-dimensional indice counter
+	size_t* idx = calloc(r->order, sizeof(size_t)); // Multi-dimensional indice counter
 	int res = 0;
 
 	// offset for result, t1 and t2
@@ -488,9 +481,12 @@ Tensor* tensor_matmul(Tensor* t1, Tensor* t2, Tensor* r) {
 	size_t base_t1 = 0;
 	size_t base_t2 = 0;
 	size_t total_elements = 1;
-	for(int i = 0; i < r->order; i++) total_elements *= r->shape[i]; // Calculates the total number of elements in the array (for dimensions > 2)
+
+	for(int i = 0; i < r->order; i++){
+		total_elements *= r->shape[i]; // Calculates the total number of elements in the array (for dimensions > 2)
+	}
 	for(int l = 0 ; l < total_elements; l++){
-		for(int i = 0; i < m; i++){ // this logic matches the one explained earlier to calculate the matmul, but now the offset and strides are involved
+		for(int i = 0; i < m; i++){    // This logic matches the one explained earlier to calculate the matmul, but now the offset and strides are involved
 			for(int j = 0; j < n; j++){
 				float total = 0;
 				for(int k = 0; k < p; k++){

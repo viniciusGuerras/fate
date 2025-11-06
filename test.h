@@ -1,5 +1,5 @@
-#ifndef TEST_UTILS_H
-#define TEST_UTILS_H
+#ifndef TEST_H
+#define TEST_H
 
 #include <stdio.h>
 #include <stddef.h>
@@ -7,14 +7,14 @@
 #define ERROR -1
 #define CORRECT 0
 
-// --- Function Test Macro ---
+// --- Function Test Macro --- //
 #define TEST_FUNC(func, ...) do { \
     printf("[TESTING] %s()\n", #func); fflush(stdout); \
     func(__VA_ARGS__); \
     printf("------------\n"); fflush(stdout); \
 } while(0)
 
-// --- Boolean Expression Test ---
+// --- Boolean Expression Test --- //
 #define ASSERT_BOOL(expression, expected) do { \
     int result = (expression); \
     if (result == (expected)) { \
@@ -25,7 +25,7 @@
     fflush(stdout); \
 } while(0)
 
-// --- Array Equality Assertion ---
+// --- Array Equality Assertion --- //
 #define ASSERT_ARRAY_EQUAL(a, b, n) do { \
     size_t __fail_index = (n); \
     for (size_t i = 0; i < (n); i++) { \
@@ -41,7 +41,7 @@
     fflush(stdout); \
 } while(0)
 
-// --- Equality Assertion ---
+// --- Equality Assertion --- //
 #define ASSERT_EQUAL(a, b) do { \
     if ((a) == (b)) { \
         printf("[PASS] %s == %s (%d)\n", #a, #b, (int)(a)); \
@@ -51,5 +51,4 @@
     fflush(stdout); \
 } while(0)
 
-#endif // TEST_UTILS_H
-
+#endif 
