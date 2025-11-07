@@ -1,43 +1,36 @@
-#ifndef TENSOR_H
-#define TENSOR_H
-
-/*
- * tensor
- * Implements a simple tensor library for numerical operations.
- * Supports creation, manipulation, and arithmetic on tensors.
- * Author: Vinicius Guerra
- * Start-Date: 2025-10-16
- */
+#ifndef AQUA_H
+#define AQUA_H
 
 #include <stdlib.h>
 #include <string.h>
 #include "utils.h"
-#include "arena.h"
 #include <stdio.h>
+#include "arena.h"
 #include <math.h>
 #include <time.h>
 #include "rng.h"
 
 typedef struct {
     /*--- Tensor internal management ---*/
-    DataType dtype;           // struct specified above
-    size_t   order_max;       // max-size for space and stride 
-    size_t   order;           // number of dimensions
-    size_t   size;            // total elements that the tensor can hold
+    DataType dtype;          // struct specified above
+    size_t   order_max;      // max-size for space and stride
+    size_t  remaining_extra; // per-dim extra space
+    size_t  capacity;        // current max-size for space and stride (without extra)
+    size_t  order;           // number of dimensions
+    size_t  size;            // total elements that the tensor can hold
     /*---     External management    ---*/
-    size_t*  shape;           // current shape of the tensor
-    size_t*  stride;          // strides for each dimension
-    void*    data;            // pointer to the tensor data
+    size_t* shape;           // current shape of the tensor
+    size_t* stride;          // strides for each dimension
+    void*  data;             // pointer to the tensor data
 } Tensor;
 
-// Tensor-arena related
-void tensor_request(RequestState* rs, char* identifier, const size_t* shape, size_t order, size_t extra, DataType dtype);
-void* tensor_find(RequestState* rs, char* identifier);
-Tensor* tensor_instantiate(RequestState* rs, char* identifier);
-void tensor_op_elementwise_request(RequestState* rs, char* identifier_r, char* identifier_1, char* identifier_2);
-void tensor_matmul_request(RequestState* rs, char* identifier, const size_t* shape_1, size_t order_1, size_t extra_1, DataType dtype_1, const size_t* shape_2, size_t order_2, size_t extra_2, DataType dtype_2);
+// ScalarType - Union for holding a single scalar of any supported type
+typedef union {
+    int i;
+    float f;
+    double d;
+} ScalarType;
 
-// Tensor populating
 int tensor_fill_random(Tensor* t);
 
 // Function pointer types for unary operations
@@ -50,30 +43,32 @@ typedef double (*tensor_op_double)(double, double);
 typedef float  (*tensor_op_float)(float, float);
 typedef int    (*tensor_op_int)(int, int);
 
-Tensor* tensor_matmul(Tensor* t1, Tensor* t2, Tensor* r);
+Tensor* tensor_matmul(Tensor* t1, Tensor* t2);
 // Tensor creation and basic operations
+Tensor* tensor_create(const size_t* shape, size_t order, size_t extra, DataType dtype);
 Tensor* tensor_clone(Tensor* c);
+Tensor* scalar_tensor(ScalarType v, DataType dtype, size_t extra);
 
 // Element-wise binary operations with broadcasting
-void tensor_apply_binary_op_double(Tensor* t1, Tensor* t2, Tensor* r, tensor_op_double op);
-void tensor_apply_binary_op_float( Tensor* t1, Tensor* t2, Tensor* r, tensor_op_float op);
-void tensor_apply_binary_op_int(   Tensor* t1, Tensor* t2, Tensor* r, tensor_op_int op);
+Tensor* tensor_apply_binary_op_double(Tensor* t1, Tensor* t2, tensor_op_double op);
+Tensor* tensor_apply_binary_op_float(Tensor* t1, Tensor* t2, tensor_op_float op);
+Tensor* tensor_apply_binary_op_int(Tensor* t1, Tensor* t2, tensor_op_int op);
 
 // Convenience wrappers for common operations 
-int tensor_sum_double(Tensor* r, Tensor* t1, Tensor* t2);
-int tensor_subtract_double(Tensor* r, Tensor* t1, Tensor* t2);
-int tensor_multiply_double(Tensor* r, Tensor* t1, Tensor* t2);
-int tensor_divide_double(Tensor* r, Tensor* t1, Tensor* t2);
+Tensor* tensor_sum_double(Tensor* t1, Tensor* t2);
+Tensor* tensor_subtract_double(Tensor* t1, Tensor* t2);
+Tensor* tensor_multiply_double(Tensor* t1, Tensor* t2);
+Tensor* tensor_divide_double(Tensor* t1, Tensor* t2);
 
-int tensor_sum_float(Tensor* r, Tensor* t1, Tensor* t2);
-int tensor_subtract_float(Tensor* r, Tensor* t1, Tensor* t2);
-int tensor_multiply_float(Tensor* r, Tensor* t1, Tensor* t2);
-int tensor_divide_float(Tensor* r, Tensor* t1, Tensor* t2);
+Tensor* tensor_sum_float(Tensor* t1, Tensor* t2);
+Tensor* tensor_subtract_float(Tensor* t1, Tensor* t2);
+Tensor* tensor_multiply_float(Tensor* t1, Tensor* t2);
+Tensor* tensor_divide_float(Tensor* t1, Tensor* t2);
 
-int tensor_sum_int(Tensor* r, Tensor* t1, Tensor* t2);
-int tensor_subtract_int(Tensor* r, Tensor* t1, Tensor* t2);
-int tensor_multiply_int(Tensor* r, Tensor* t1, Tensor* t2);
-int tensor_divide_int(Tensor* r, Tensor* t1, Tensor* t2);
+Tensor* tensor_sum_int(Tensor* t1, Tensor* t2);
+Tensor* tensor_subtract_int(Tensor* t1, Tensor* t2);
+Tensor* tensor_multiply_int(Tensor* t1, Tensor* t2);
+Tensor* tensor_divide_int(Tensor* t1, Tensor* t2);
 
 // Tensor manipulation (reshape, transpose, squeeze, flatten)
 int tensor_permute(Tensor* t, size_t* permute_arr, size_t permute_arr_size);
@@ -93,4 +88,4 @@ void tensor_print(Tensor* t);
 // Free tensor memory
 void tensor_free(Tensor* t);
 
-#endif 
+#endif // AQUA_Hendif
