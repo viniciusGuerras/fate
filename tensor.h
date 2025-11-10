@@ -11,6 +11,7 @@
 
 #include <stdlib.h>
 #include <string.h>
+#include "errors.h"
 #include "utils.h"
 #include <stdio.h>
 #include "arena.h"
@@ -96,4 +97,4 @@ void tensor_print_stride(Tensor* t);
 void tensor_print_shape(Tensor* t);
 void tensor_print(Tensor* t);
 
-#endif // AQUA_Hendif
+#endif // TENSOR_H

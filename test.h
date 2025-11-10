@@ -1,8 +1,22 @@
 #ifndef TEST_H
 #define TEST_H
 
-#include <stdio.h>
+/*
+ * rng.h
+ * Implements Random Number Generators 
+ * Author: Vinicius Guerra
+ * Start-Date: 2025-11-02
+ */
+
+#include <string.h>
+#include <stdlib.h>
 #include <stddef.h>
+#include "tensor.h"
+#include "arena.h"
+#include <stdio.h>
+#include "utils.h"
+#include <math.h>
+#include "rng.h"
 
 #define ERROR -1
 #define CORRECT 0

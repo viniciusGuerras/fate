@@ -10,17 +10,15 @@ int arena_init(size_t memory_size){
 	global_limit = memory_size;
 	global_offset = 0;
 	if(!global_init){
-		printf("ERROR: couldn't initialize area.\n");
-		return -1;
+		return ARENA_ERR_NOT_INITIALIZED;
 	}
-	return 0;
+	return ARENA_OK;
 }
 
 // Allocates a block of memory within the arena.
 void* arena_alloc(size_t number, size_t memory_size){
 	size_t total = number * memory_size;     // Total bytes requested
 	if((global_offset + total) > global_limit){
-		printf("ERROR: not enough memory.\n");
 		return NULL;
 	}
 	void* ptr = global_init + global_offset; // Get a pointer to the next free space in the arena
@@ -31,13 +29,12 @@ void* arena_alloc(size_t number, size_t memory_size){
 // Frees the entire arena (all allocations at once).
 int arena_free(){
 	if(!global_init){
-		printf("ERROR: arena not initialized.\n");
-		return -1;
+		return ARENA_ERR_NOT_INITIALIZED;
 	}
 	free(global_init);
 	global_init   = NULL;
 	global_offset = 0;
 	global_limit  = 0;
-	return 0;
+	return ARENA_OK;
 }
 

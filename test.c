@@ -1,12 +1,4 @@
 #include "test.h"
-#include "tensor.h"
-#include "arena.h"
-#include "structures/hashset.h"
-#include "utils.h"
-#include "rng.h"
-#include <math.h>
-#include <string.h>
-#include <stdlib.h>
 
 // Arena Tests
 void test_arena_init() {
