@@ -3,6 +3,6 @@
 #include <time.h>
 #include "tensor.h"
 
-int main(void) {
+int main() {
+	return 0;
 }
-

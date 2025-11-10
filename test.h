@@ -16,11 +16,11 @@
 
 // --- Boolean Expression Test --- //
 #define ASSERT_BOOL(expression, expected) do { \
-    int result = (expression); \
-    if (result == (expected)) { \
+    int __test_result = (expression); \
+    if (__test_result == (expected)) { \
         printf("[PASS] %s working as expected at line %d\n", #expression, __LINE__); \
     } else { \
-        printf("[FAIL] %s got result: %d (expected %d) at line %d\n", #expression, result, (expected), __LINE__); \
+        printf("[FAIL] %s got result: %d (expected %d) at line %d\n", #expression, __test_result, (expected), __LINE__); \
     } \
     fflush(stdout); \
 } while(0)

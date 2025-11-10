@@ -1,11 +1,3 @@
-/*
- * tensor.h
- * Implements a simple tensor library for numerical operations.
- * Supports creation, manipulation, and arithmetic on tensors.
- * Author: Vinicius Guerra
- * Start-Date: 2025-10-16
- */
-
 #include "tensor.h"
 
 /*
@@ -79,8 +71,8 @@ Tensor* scalar_tensor(ScalarType v, DataType dtype, size_t extra) {
 	}
 	size_t type_size = get_dtype_size(dtype);
 	switch (dtype) {
-		case DT_INT:    ((int*)t->data)[0] = v.i; break;
-		case DT_FLOAT:  ((float*)t->data)[0] = v.f; break;
+		case DT_INT:    ((int*)t->data)[0]    = v.i; break;
+		case DT_FLOAT:  ((float*)t->data)[0]  = v.f; break;
 		case DT_DOUBLE: ((double*)t->data)[0] = v.d; break;
 	}
 	return t;
@@ -140,8 +132,7 @@ static inline size_t* broadcast_shape(const size_t* s1, size_t n1, const size_t*
  * @t1: Pointer to the first tensor structure.
  * @t2: Pointer to the second tensor structure.
  */
-static inline void broadcasted_stride(size_t* s1, size_t* s2, 
-			size_t out_dim, Tensor* t1, Tensor* t2) {
+static inline void broadcasted_stride(size_t* s1, size_t* s2, size_t out_dim, Tensor* t1, Tensor* t2){
 	for (size_t i = 0; i < out_dim; i++) {
 		int t1_idx = (int)i - (int)(out_dim - t1->order);
 		int t2_idx = (int)i - (int)(out_dim - t2->order);
@@ -436,8 +427,6 @@ Tensor* tensor_matmul(Tensor* t1, Tensor* t2) {
 	  inside it a loop from 1 -> p (all the b's)
 	  inside it a loop from 1 -> n 
 	 
-	  wow, O(n^3) i need something quicker
-	 
 	  pseudocode:
 	  m1 = matrice 1
 	  m2 = matrice 2
@@ -472,19 +461,23 @@ Tensor* tensor_matmul(Tensor* t1, Tensor* t2) {
 		result->stride[i - 1] = result->stride[i] * result->shape[i]; 
 	}
 
-
-	// multi-dimensional indice counter
-	size_t* idx = calloc(out_dim, sizeof(size_t));
+	size_t* idx = calloc(out_dim, sizeof(size_t)); // multi-dimensional indice counter
 
 	int res = 0;
+
 	// offset for result, t1 and t2
 	size_t base_res = 0;
 	size_t base_t1 = 0;
 	size_t base_t2 = 0;
+
 	size_t total_elements = 1;
-	for(int i = 0; i < out_dim; i++) total_elements *= result->shape[i]; // Calculates the total number of elements in the array (for dimensions > 2)
+	for(int i = 0; i < out_dim; i++){
+		total_elements *= result->shape[i]; // Calculates the total number of elements in the array (for dimensions > 2)
+	}
+
+	// this logic matches the one explained earlier to calculate the matmul, but now the offset and strides are involved
 	for(int i = 0 ; i < total_elements; i++){
-		for(int i = 0; i < m; i++){ // this logic matches the one explained earlier to calculate the matmul, but now the offset and strides are involved
+		for(int i = 0; i < m; i++){				     
 			for(int j = 0; j < n; j++){
 				float total = 0;
 				for(int k = 0; k < p; k++){
@@ -499,9 +492,9 @@ Tensor* tensor_matmul(Tensor* t1, Tensor* t2) {
 			}
 
 		}
+
 		/*
 		 * code responsible to find the current "multidimensional index" offset
-		 *
 		 * start an array idx with a position for each element, ex: for 2 dimensions [0, 0]
 		 * each new element adds a number until the dimension is filled
 		 * [0, 0] -> [0, 1] -> [0, 2] -> ...
@@ -516,8 +509,8 @@ Tensor* tensor_matmul(Tensor* t1, Tensor* t2) {
 			if(idx[h] < result->shape[h]) break;
 			idx[h] = 0;
 			base_res -= result->stride[h] * result->shape[h];
-			base_t1 -= s1[h]            * result->shape[h];
-			base_t2 -= s2[h]            * result->shape[h];
+			base_t1 -= s1[h]              * result->shape[h];
+			base_t2 -= s2[h]              * result->shape[h];
 		}
 	}
 	free(out_shape);
@@ -676,8 +669,11 @@ int tensor_reshape(Tensor* t, size_t* shape, size_t new_order){
 	}
 	for (size_t i = 0; i < new_order; i++) t->shape[i] = (size_t)shape[i];
 
+	// Calculates strides again for new shape
 	t->stride[new_order - 1] = 1;
-	for (size_t i = new_order - 1; i > 0; i--) t->stride[i - 1] = t->stride[i] * t->shape[i];
+	for (size_t i = new_order - 1; i > 0; i--){
+		t->stride[i - 1] = t->stride[i] * t->shape[i];
+	}
 
 	return 0;
 }
@@ -749,7 +745,6 @@ int tensor_unsqueeze(Tensor* t, size_t idx){
 		return -1;
 	}
 
-	t->remaining_extra--;
 	size_t new_order = t->order + 1;
 
 	for(size_t i = t->order; i > idx; i--){
@@ -830,6 +825,8 @@ int tensor_permute(Tensor* t, size_t* permute_arr, size_t permute_arr_size){
  */
 Tensor* tensor_clone(Tensor* c){
 	Tensor* t = tensor_create(c->shape, c->order, c->remaining_extra, c->dtype);
+
+	// Copies all tensor c data to new tensor t
 	t->size = c->size;
 	t->order = c->order;
 	for(size_t i = 0; i < c->order; i++){
@@ -878,9 +875,11 @@ int tensor_flatten(Tensor* t){
  * @offset: memory offset in the data array
  */
 void tensor_print_recursive(void* data, size_t* shape, DataType dtype, size_t order, size_t pos, size_t offset){
+	// Base case: if we are at the last dimension, print the elements of this 1D slice
 	if (pos == order - 1) {
 		printf("[");
 		for (size_t i = 0; i < shape[pos]; i++) {
+			// Print element based on its data type
 			switch(dtype){
 				case DT_DOUBLE:{
 					printf("%lf", ((double*)data)[offset + i]);
@@ -895,6 +894,7 @@ void tensor_print_recursive(void* data, size_t* shape, DataType dtype, size_t or
 					break;
 				}
 			}
+			// Print comma between elements except after the last one
 			if (i < shape[pos] - 1){
 				printf(", ");
 			} 
@@ -905,11 +905,22 @@ void tensor_print_recursive(void* data, size_t* shape, DataType dtype, size_t or
 
 	printf("[");
 
+	// Calculate the number of elements in the inner dimensions
+        // This is used to compute the correct offset when descending recursively
 	size_t inner_size = 1;
-        for (size_t j = pos + 1; j < order; j++) inner_size *= shape[j];
+        for (size_t j = pos + 1; j < order; j++){ 
+		inner_size *= shape[j];
+	}
 
+	// Recursively print each sub-tensor in the current dimension
 	for(size_t i = 0; i < shape[pos]; i++){
+	        // Offset is incremented by the size of the inner dimension block
 		tensor_print_recursive(data, shape, dtype, order, pos + 1, offset + i * inner_size);
+		
+		// Print a comma between blocks except after the last one
+		if (i < shape[pos] - 1){
+		    printf(", ");
+		}
 	}
 
 	printf("]");
@@ -950,9 +961,4 @@ void tensor_print_stride(Tensor* t){
 		if (i < t->order - 1) printf(", ");
 	}
 	printf(")\n");
-}
-
-void tensor_free(Tensor* t) {
-	if (!t) return;
-	free(t);
 }

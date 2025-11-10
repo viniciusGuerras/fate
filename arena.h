@@ -3,8 +3,7 @@
 
 /*
  * arena.h
- * Implements a memory arena
- * Supports allocation of memory
+ * Implements a arena (large block of memory)
  * Author: Vinicius Guerra
  * Start-Date: 2025-11-04
  */
@@ -12,6 +11,7 @@
 #include <stdlib.h>
 #include <stdio.h>
 
+// Global variables
 extern char*   global_init;
 extern size_t  global_offset;
 extern size_t  global_limit;

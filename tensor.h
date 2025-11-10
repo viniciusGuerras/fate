@@ -1,6 +1,14 @@
 #ifndef AQUA_H
 #define AQUA_H
 
+/*
+ * tensor.h
+ * Implements a simple tensor library for numerical operations.
+ * Supports creation, manipulation, and arithmetic on tensors.
+ * Author: Vinicius Guerra
+ * Start-Date: 2025-10-16
+ */
+
 #include <stdlib.h>
 #include <string.h>
 #include "utils.h"
@@ -84,8 +92,5 @@ void tensor_print_recursive(void* data, size_t* shape, DataType dtype, size_t or
 void tensor_print_stride(Tensor* t);
 void tensor_print_shape(Tensor* t);
 void tensor_print(Tensor* t);
-
-// Free tensor memory
-void tensor_free(Tensor* t);
 
 #endif // AQUA_Hendif
