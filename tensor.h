@@ -1,5 +1,5 @@
-#ifndef AQUA_H
-#define AQUA_H
+#ifndef TENSOR_H
+#define TENSOR_H
 
 /*
  * tensor.h
@@ -39,8 +39,6 @@ typedef union {
     double d;
 } ScalarType;
 
-int tensor_fill_random(Tensor* t);
-
 // Function pointer types for unary operations
 int tensor_negation(Tensor* t);
 int tensor_abs(Tensor* t);
@@ -51,16 +49,21 @@ typedef double (*tensor_op_double)(double, double);
 typedef float  (*tensor_op_float)(float, float);
 typedef int    (*tensor_op_int)(int, int);
 
-Tensor* tensor_matmul(Tensor* t1, Tensor* t2);
 // Tensor creation and basic operations
 Tensor* tensor_create(const size_t* shape, size_t order, size_t extra, DataType dtype);
 Tensor* tensor_clone(Tensor* c);
 Tensor* scalar_tensor(ScalarType v, DataType dtype, size_t extra);
 
+// Tensor filling
+int tensor_fill_random(Tensor* t);
+
 // Element-wise binary operations with broadcasting
 Tensor* tensor_apply_binary_op_double(Tensor* t1, Tensor* t2, tensor_op_double op);
 Tensor* tensor_apply_binary_op_float(Tensor* t1, Tensor* t2, tensor_op_float op);
 Tensor* tensor_apply_binary_op_int(Tensor* t1, Tensor* t2, tensor_op_int op);
+
+// Linear algebra 
+Tensor* tensor_matmul(Tensor* t1, Tensor* t2);
 
 // Convenience wrappers for common operations 
 Tensor* tensor_sum_double(Tensor* t1, Tensor* t2);
