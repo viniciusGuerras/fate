@@ -12,4 +12,3 @@ typedef enum { // Supported data types
 size_t get_dtype_size(DataType dtype);
 
 #endif
-
