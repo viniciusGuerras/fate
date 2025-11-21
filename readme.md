@@ -17,8 +17,5 @@
 
 ## Installation
 
-No special installation required. Include the `aqua.h` header and link your source code with the implementation.
-
-```c
-#include "aqua.h"
+No special installation required. Include the `tensor.h` header and link your source code with the implementation.
 
