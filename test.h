@@ -1,31 +1,45 @@
-#ifndef TEST_UTILS_H
-#define TEST_UTILS_H
+#ifndef TEST_H
+#define TEST_H
 
-#include <stdio.h>
+/*
+ * rng.h
+ * Implements Random Number Generators 
+ * Author: Vinicius Guerra
+ * Start-Date: 2025-11-02
+ */
+
+#include <string.h>
+#include <stdlib.h>
 #include <stddef.h>
+#include "tensor.h"
+#include "arena.h"
+#include <stdio.h>
+#include "utils.h"
+#include <math.h>
+#include "rng.h"
 
 #define ERROR -1
 #define CORRECT 0
 
-// --- Function Test Macro ---
+// --- Function Test Macro --- //
 #define TEST_FUNC(func, ...) do { \
     printf("[TESTING] %s()\n", #func); fflush(stdout); \
     func(__VA_ARGS__); \
     printf("------------\n"); fflush(stdout); \
 } while(0)
 
-// --- Boolean Expression Test ---
+// --- Boolean Expression Test --- //
 #define ASSERT_BOOL(expression, expected) do { \
-    int result = (expression); \
-    if (result == (expected)) { \
+    int __test_result = (expression); \
+    if (__test_result == (expected)) { \
         printf("[PASS] %s working as expected at line %d\n", #expression, __LINE__); \
     } else { \
-        printf("[FAIL] %s got result: %d (expected %d) at line %d\n", #expression, result, (expected), __LINE__); \
+        printf("[FAIL] %s got result: %d (expected %d) at line %d\n", #expression, __test_result, (expected), __LINE__); \
     } \
     fflush(stdout); \
 } while(0)
 
-// --- Array Equality Assertion ---
+// --- Array Equality Assertion --- //
 #define ASSERT_ARRAY_EQUAL(a, b, n) do { \
     size_t __fail_index = (n); \
     for (size_t i = 0; i < (n); i++) { \
@@ -41,7 +55,7 @@
     fflush(stdout); \
 } while(0)
 
-// --- Equality Assertion ---
+// --- Equality Assertion --- //
 #define ASSERT_EQUAL(a, b) do { \
     if ((a) == (b)) { \
         printf("[PASS] %s == %s (%d)\n", #a, #b, (int)(a)); \
@@ -51,5 +65,4 @@
     fflush(stdout); \
 } while(0)
 
-#endif // TEST_UTILS_H
-
+#endif 

@@ -1,13 +1,5 @@
-/*
- * random.c
- * Implements Random Number Generators
- * Current implementations: SplitMix64 and Xoshiro
- * Author: Vinicius Guerra
- * Start-Date: 2025-10-29
- */
-
 #include "rng.h"
-
+#
 static uint64_t splitmix64_s;
 static uint64_t xoshiro_s[4];
 
@@ -99,7 +91,7 @@ static inline uint64_t xoshiro_rotl(const uint64_t x, int k) {
  *     non-zero values. The algorithm has a period of 2^256-1.
  *   - This function is very fast and produces high-quality 64-bit pseudorandom numbers.
  */
-uint64_t xoshiro_next(void) {
+uint64_t xoshiro_next() {
 	const uint64_t result = xoshiro_rotl(xoshiro_s[1] * 5, 7) * 9;
 
 	const uint64_t t = xoshiro_s[1] << 17;

@@ -1,23 +1,28 @@
-#ifndef AQUA_H
-#define AQUA_H
+#ifndef TENSOR_H
+#define TENSOR_H
+
+/*
+ * tensor.h
+ * Implements a simple tensor library for numerical operations.
+ * Supports creation, manipulation, and arithmetic on tensors.
+ * Author: Vinicius Guerra
+ * Start-Date: 2025-10-16
+ */
 
 #include <stdlib.h>
 #include <string.h>
+#include "errors.h"
+#include "utils.h"
 #include <stdio.h>
+#include "arena.h"
 #include <math.h>
 #include <time.h>
 #include "rng.h"
 
-// DataType - Supported data types for Tensor elements
-typedef enum {
-    DT_INT,
-    DT_FLOAT,
-    DT_DOUBLE
-} DataType;
-
 typedef struct {
     /*--- Tensor internal management ---*/
     DataType dtype;          // struct specified above
+    size_t   order_max;      // max-size for space and stride
     size_t  remaining_extra; // per-dim extra space
     size_t  capacity;        // current max-size for space and stride (without extra)
     size_t  order;           // number of dimensions
@@ -35,8 +40,6 @@ typedef union {
     double d;
 } ScalarType;
 
-int tensor_fill_random(Tensor* t);
-
 // Function pointer types for unary operations
 int tensor_negation(Tensor* t);
 int tensor_abs(Tensor* t);
@@ -47,16 +50,21 @@ typedef double (*tensor_op_double)(double, double);
 typedef float  (*tensor_op_float)(float, float);
 typedef int    (*tensor_op_int)(int, int);
 
-Tensor* tensor_matmul(Tensor* t1, Tensor* t2);
 // Tensor creation and basic operations
 Tensor* tensor_create(const size_t* shape, size_t order, size_t extra, DataType dtype);
 Tensor* tensor_clone(Tensor* c);
 Tensor* scalar_tensor(ScalarType v, DataType dtype, size_t extra);
 
+// Tensor filling
+int tensor_fill_random(Tensor* t);
+
 // Element-wise binary operations with broadcasting
 Tensor* tensor_apply_binary_op_double(Tensor* t1, Tensor* t2, tensor_op_double op);
 Tensor* tensor_apply_binary_op_float(Tensor* t1, Tensor* t2, tensor_op_float op);
 Tensor* tensor_apply_binary_op_int(Tensor* t1, Tensor* t2, tensor_op_int op);
+
+// Linear algebra 
+Tensor* tensor_matmul(Tensor* t1, Tensor* t2);
 
 // Convenience wrappers for common operations 
 Tensor* tensor_sum_double(Tensor* t1, Tensor* t2);
@@ -89,7 +97,4 @@ void tensor_print_stride(Tensor* t);
 void tensor_print_shape(Tensor* t);
 void tensor_print(Tensor* t);
 
-// Free tensor memory
-void tensor_free(Tensor* t);
-
-#endif // AQUA_Hendif
+#endif // TENSOR_H

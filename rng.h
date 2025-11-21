@@ -1,6 +1,14 @@
 #ifndef RNG_H
 #define RNG_H
 
+/*
+ * random.h
+ * Implements Random Number Generators
+ * Current implementations: SplitMix64 and Xoshiro
+ * Author: Vinicius Guerra
+ * Start-Date: 2025-10-29
+ */
+
 #include <stdlib.h>
 #include <stdio.h>
 
@@ -16,7 +24,7 @@ uint64_t xoshiro_next(void);
 static uint64_t s[4];
 
 /*
-FUTURE ADDITION:
+FUTURE ADDITION FOR MULTITHREADING:
 This is the jump function for the generator. It is equivalent
 to 2^128 calls to next(); it can be used to generate 2^128
 non-overlapping subsequences for parallel computations. 
@@ -43,8 +51,6 @@ void jump(void) {
 	s[2] = s2;
 	s[3] = s3;
 }
-
-
 
 This is the long-jump function for the generator. It is equivalent to
 2^192 calls to next(); it can be used to generate 2^64 starting points,
