@@ -10,7 +10,7 @@
 - Scalar tensors for easy numeric operations
 - Element-wise unary operations (`negation`, `abs`, `exp`)
 - Element-wise binary operations with broadcasting support
-- Matrix multiplication
+- Matrix multiplication (For float type only)
 - Tensor manipulation: `reshape`, `transpose`, `squeeze`, `unsqueeze`, `flatten`
 - Utilities for printing tensor shapes, strides, and contents
 - Memory management functions for tensors
@@ -18,4 +18,9 @@
 ## Installation
 
 No special installation required. Include the `tensor.h` header and link your source code with the implementation.
+
+## How to use
+    - Create a main file to call the functions
+    - First initialize an Arena with the size needed 
+    - Create the tensors using the functions in 'tensor.h'
 

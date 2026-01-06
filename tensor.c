@@ -12,7 +12,7 @@
  */
 Tensor* tensor_create(const size_t* shape, size_t order, size_t extra, DataType dtype) {
 	size_t total_elements = 1;
-	for(int i = 0; i < order; i++){
+	for(size_t i = 0; i < order; i++){
 		total_elements *= shape[i];
 	}
 	size_t type_size = get_dtype_size(dtype);
@@ -67,7 +67,6 @@ Tensor* scalar_tensor(ScalarType v, DataType dtype, size_t extra) {
 	if(!t){
 		return NULL;
 	}
-	size_t type_size = get_dtype_size(dtype);
 	switch (dtype) {
 		case DT_INT:    ((int*)t->data)[0]    = v.i; break;
 		case DT_FLOAT:  ((float*)t->data)[0]  = v.f; break;
@@ -450,25 +449,23 @@ Tensor* tensor_matmul(Tensor* t1, Tensor* t2) {
 	}
 
 	size_t* idx = calloc(out_dim, sizeof(size_t)); // multi-dimensional indice counter
-
-	int res = 0;
-
+	//
 	// offset for result, t1 and t2
 	size_t base_res = 0;
 	size_t base_t1 = 0;
 	size_t base_t2 = 0;
 
 	size_t total_elements = 1;
-	for(int i = 0; i < out_dim; i++){
+	for(size_t i = 0; i < out_dim; i++){
 		total_elements *= result->shape[i]; // Calculates the total number of elements in the array (for dimensions > 2)
 	}
 
 	// this logic matches the one explained earlier to calculate the matmul, but now the offset and strides are involved
-	for(int i = 0 ; i < total_elements; i++){
-		for(int i = 0; i < m; i++){				     
-			for(int j = 0; j < n; j++){
+	for(size_t i = 0 ; i < total_elements; i++){
+		for(size_t i = 0; i < m; i++){				     
+			for(size_t j = 0; j < n; j++){
 				float total = 0;
-				for(int k = 0; k < p; k++){
+				for(size_t k = 0; k < p; k++){
 					size_t pos_a = base_t1 + (t1->stride[t1->order - 2] * i) + (t1->stride[t1->order - 1] * k); 
 					size_t pos_b = base_t2 + (t2->stride[t2->order - 2] * k) + (t2->stride[t2->order - 1] * j); 
 					float a = t1_data[pos_a];
@@ -515,21 +512,21 @@ int tensor_fill_random(Tensor* t){
 	switch(t->dtype){
 		case DT_DOUBLE: {
 			double* d = (double*)t->data;
-			for(int i = 0; i < t->size; i++){
+			for(size_t i = 0; i < t->size; i++){
 				d[i] = xoshiro_next_double();
 			}
 			break;
 		}
 		case DT_FLOAT: {
 			float* d = (float*)t->data;
-			for(int i = 0; i < t->size; i++){
+			for(size_t i = 0; i < t->size; i++){
 				d[i] = xoshiro_next_float();
 			}
 			break;
 		}
 		case DT_INT: {
 			int* d = (int*)t->data;
-			for(int i = 0; i < t->size; i++){
+			for(size_t i = 0; i < t->size; i++){
 				d[i] = xoshiro_next();
 			}
 			break;
@@ -545,21 +542,21 @@ int tensor_negation(Tensor* t){
 	switch(t->dtype){
 		case DT_DOUBLE: {
 			double* d = (double*)t->data;
-			for(int i = 0; i < t->size; i++){
+			for(size_t i = 0; i < t->size; i++){
 				d[i] = -d[i];
 			}
 			break;
 		}
 		case DT_FLOAT: {
 			float* d = (float*)t->data;
-			for(int i = 0; i < t->size; i++){
+			for(size_t i = 0; i < t->size; i++){
 				d[i] = -d[i];
 			}
 			break;
 		}
 		case DT_INT: {
 			int* d = (int*)t->data;
-			for(int i = 0; i < t->size; i++){
+			for(size_t i = 0; i < t->size; i++){
 				d[i] = -d[i];
 			}
 			break;
@@ -575,21 +572,21 @@ int tensor_abs(Tensor* t){
 	switch(t->dtype){
 		case DT_DOUBLE: {
 			double* d = (double*)t->data;
-			for(int i = 0; i < t->size; i++){
+			for(size_t i = 0; i < t->size; i++){
 				d[i] = fabs(d[i]);
 			}
 			break;
 		}
 		case DT_FLOAT: {
 			float* d = (float*)t->data;
-			for(int i = 0; i < t->size; i++){
+			for(size_t i = 0; i < t->size; i++){
 				d[i] = fabs(d[i]);
 			}
 			break;
 		}
 		case DT_INT: {
 			int* d = (int*)t->data;
-			for(int i = 0; i < t->size; i++){
+			for(size_t i = 0; i < t->size; i++){
 				d[i] = abs(d[i]);
 			}
 			break;
@@ -605,21 +602,21 @@ int tensor_exp(Tensor* t){
 	switch(t->dtype){
 		case DT_DOUBLE: {
 			double* d = (double*)t->data;
-			for(int i = 0; i < t->size; i++){
+			for(size_t i = 0; i < t->size; i++){
 				d[i] = exp(d[i]);
 			}
 			break;
 		}
 		case DT_FLOAT: {
 			float* d = (float*)t->data;
-			for(int i = 0; i < t->size; i++){
+			for(size_t i = 0; i < t->size; i++){
 				d[i] = expf(d[i]);
 			}
 			break;
 		}
 		case DT_INT: {
 			int* d = (int*)t->data;
-			for(int i = 0; i < t->size; i++){
+			for(size_t i = 0; i < t->size; i++){
 				d[i] = (int)exp(d[i]);
 			}
 			break;
@@ -638,15 +635,15 @@ int tensor_exp(Tensor* t){
  */
 int tensor_reshape(Tensor* t, size_t* shape, size_t new_order){
 	size_t new_size = 1;
-	for(int i = 0; i < new_order; i++){
+	for(size_t i = 0; i < new_order; i++){
 		new_size *= shape[i];
 	}
 	if(new_size != t->size){
-		return TENSOR_WRONG_DIM;
+		return TENSOR_ERR_DIM;
 	}
 
 	if(new_order != t->order && t->remaining_extra + t->order < new_order){
-		return TENSOR_ERR_NOT_ENOUGH_MEMORY
+		return TENSOR_ERR_NOT_ENOUGH_MEMORY;
 	}
 	else{
 		t->remaining_extra -= (new_order - t->order);
@@ -772,7 +769,7 @@ int tensor_transpose(Tensor* t, size_t from, size_t to){
  */
 int tensor_permute(Tensor* t, size_t* permute_arr, size_t permute_arr_size){
 	if(permute_arr_size != t->order){
-		return TENSOR_ERR_INVALID_ARGS
+		return TENSOR_ERR_INVALID_ARGS;
 	}
 
 	size_t* temp_shape = malloc(sizeof(size_t) * t->order);
@@ -790,7 +787,7 @@ int tensor_permute(Tensor* t, size_t* permute_arr, size_t permute_arr_size){
 		temp_shape[i] = t->shape[ith_permute]; 
 	}
 
-	for(int i = 0; i < t->order; i++){
+	for(size_t i = 0; i < t->order; i++){
 		t->shape[i] = temp_shape[i];
 	}
 
@@ -923,7 +920,6 @@ void tensor_print(Tensor* t){
 		}
 	}
 	printf("\n");
-eturn;
 }
 
 void tensor_print_shape(Tensor* t){
